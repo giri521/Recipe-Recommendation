@@ -12,56 +12,44 @@ import sys
 # -----------------------------
 # 1. Initialize Flask app
 # -----------------------------
-app = Flask(__name__)
-# IMPORTANT: Use a complex, randomly generated secret key in a real application
-app.secret_key = "supersecretkey_gourmetguide"
+load_dotenv()  # Load .env locally (Render uses environment variables directly)
 
-# NEW: Register the tojson filter for Jinja
+app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "fallback_secret_key")
+
+# -----------------------------
+# 2. Jinja filter for JSON
+# -----------------------------
 def tojson_filter(data):
     """Safely converts Python data to JSON string for use in JavaScript within HTML attributes."""
-    
+
     def custom_serializer(obj):
-        # Handle numpy data types
         if isinstance(obj, (np.integer, np.floating, np.bool_)):
             return obj.item()
         if isinstance(obj, np.ndarray):
             return obj.tolist()
-        # Handle datetime objects
         if isinstance(obj, datetime):
             return obj.isoformat()
-        # Handle date objects from pandas resampling
         if isinstance(obj, pd.Timestamp):
-             return obj.strftime('%Y-%m-%d')
+            return obj.strftime('%Y-%m-%d')
         raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
     json_string = json.dumps(data, default=custom_serializer)
-    # Escape quotes for safe placement within an HTML attribute
-    escaped_json = json_string.replace('"', '&quot;') 
+    escaped_json = json_string.replace('"', '&quot;')
     return Markup(escaped_json)
 
 app.jinja_env.filters['tojson'] = tojson_filter
-# ---
 
-from dotenv import load_dotenv
-import os
-
-# Load .env automatically if running locally
-load_dotenv()
-
-# Access variables
-BACKENDLESS_APP_ID = os.getenv("BACKENDLESS_APP_ID")
-BACKENDLESS_API_KEY = os.getenv("BACKENDLESS_API_KEY")
-FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
-
-# Backendless keys
+# -----------------------------
+# 3. Backendless Config
+# -----------------------------
 APP_ID = os.getenv("BACKENDLESS_APP_ID")
 API_KEY = os.getenv("BACKENDLESS_API_KEY")
-if not APP_ID or not API_KEY:
-    print("❌ Error: BACKENDLESS_APP_ID or BACKENDLESS_API_KEY not found in environment variables.")
-    BASE_URL = "https://api.backendless.com/DUMMY_APP_ID/DUMMY_API_KEY"
-else:
-    BASE_URL = f"https://api.backendless.com/{APP_ID}/{API_KEY}"
 
+if not APP_ID or not API_KEY:
+    raise ValueError("❌ Error: BACKENDLESS_APP_ID or BACKENDLESS_API_KEY not found in environment variables.")
+
+BASE_URL = f"https://api.backendless.com/{APP_ID}/{API_KEY}"
 BASE_HEADERS = {"Content-Type": "application/json"}
 
 # -----------------------------
@@ -806,4 +794,5 @@ def history():
 # -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
+
 
