@@ -42,12 +42,16 @@ def tojson_filter(data):
 app.jinja_env.filters['tojson'] = tojson_filter
 # ---
 
-# --- Load environment variables using the explicit path ---
-# Note: Using r"..." for raw string to handle Windows path backslashes
-# Replace this path with your actual path if running locally outside the platform
-dotenv_path = r"C:\Users\giriv\Desktop\working Projects\recipe\recipe\.env"
-load_dotenv(dotenv_path)
-# -----------------------------
+from dotenv import load_dotenv
+import os
+
+# Load .env automatically if running locally
+load_dotenv()
+
+# Access variables
+BACKENDLESS_APP_ID = os.getenv("BACKENDLESS_APP_ID")
+BACKENDLESS_API_KEY = os.getenv("BACKENDLESS_API_KEY")
+FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
 
 # Backendless keys
 APP_ID = os.getenv("BACKENDLESS_APP_ID")
@@ -802,3 +806,4 @@ def history():
 # -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
+
