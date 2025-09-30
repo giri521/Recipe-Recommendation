@@ -5,51 +5,59 @@ import os
 import requests
 from dotenv import load_dotenv
 from datetime import datetime
-import numpy as np 
-from markupsafe import Markup 
+import numpy as np
+from markupsafe import Markup
 import sys
 
 # -----------------------------
 # 1. Initialize Flask app
 # -----------------------------
-load_dotenv()  # Load .env locally (Render uses environment variables directly)
-
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "fallback_secret_key")
+# IMPORTANT: Use a complex, randomly generated secret key in a real application
+app.secret_key = "supersecretkey_gourmetguide"
 
-# -----------------------------
-# 2. Jinja filter for JSON
-# -----------------------------
+# NEW: Register the tojson filter for Jinja
 def tojson_filter(data):
     """Safely converts Python data to JSON string for use in JavaScript within HTML attributes."""
-
+    
     def custom_serializer(obj):
+        # Handle numpy data types
         if isinstance(obj, (np.integer, np.floating, np.bool_)):
             return obj.item()
         if isinstance(obj, np.ndarray):
             return obj.tolist()
+        # Handle datetime objects
         if isinstance(obj, datetime):
             return obj.isoformat()
+        # Handle date objects from pandas resampling
         if isinstance(obj, pd.Timestamp):
             return obj.strftime('%Y-%m-%d')
         raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
     json_string = json.dumps(data, default=custom_serializer)
-    escaped_json = json_string.replace('"', '&quot;')
+    # Escape quotes for safe placement within an HTML attribute
+    escaped_json = json_string.replace('"', '&quot;') 
     return Markup(escaped_json)
 
 app.jinja_env.filters['tojson'] = tojson_filter
+# ---
 
+# --- Load environment variables using the explicit path ---
+# Note: Using r"..." for raw string to handle Windows path backslashes
+# Replace this path with your actual path if running locally outside the platform
+dotenv_path = r"C:\Users\giriv\Desktop\working Projects\recipe\recipe\.env"
+load_dotenv(dotenv_path)
 # -----------------------------
-# 3. Backendless Config
-# -----------------------------
+
+# Backendless keys
 APP_ID = os.getenv("BACKENDLESS_APP_ID")
 API_KEY = os.getenv("BACKENDLESS_API_KEY")
-
 if not APP_ID or not API_KEY:
-    raise ValueError("❌ Error: BACKENDLESS_APP_ID or BACKENDLESS_API_KEY not found in environment variables.")
+    print("❌ Error: BACKENDLESS_APP_ID or BACKENDLESS_API_KEY not found in environment variables.")
+    BASE_URL = "https://api.backendless.com/DUMMY_APP_ID/DUMMY_API_KEY"
+else:
+    BASE_URL = f"https://api.backendless.com/{APP_ID}/{API_KEY}"
 
-BASE_URL = f"https://api.backendless.com/{APP_ID}/{API_KEY}"
 BASE_HEADERS = {"Content-Type": "application/json"}
 
 # -----------------------------
@@ -94,6 +102,8 @@ except Exception as e:
     data = pd.DataFrame([
         {'recipe_id': '1', 'recipe_name': 'Dummy Chicken Stew', 'ingredients': ['Chicken', 'Carrot', 'Water'], 'nutritions': {'calories': 300, 'protein_g': 30, 'carbs_g': 15, 'fat_g': 10}, 'veg_nonveg': 'Non-Veg', 'diet_goal': 'Muscle_Gain', 'health_score': 85, 'image_link': 'https://placehold.co/600x400/FF7D00/FFFFFF?text=Dummy+Recipe', 'steps': ['Cook chicken.', 'Add vegetables.']},
         {'recipe_id': '2', 'recipe_name': 'Dummy Salad', 'ingredients': ['Lettuce', 'Tomato', 'Cucumber'], 'nutritions': {'calories': 150, 'protein_g': 5, 'carbs_g': 10, 'fat_g': 5}, 'veg_nonveg': 'Veg', 'diet_goal': 'Weight_Loss', 'health_score': 95, 'image_link': 'https://placehold.co/600x400/00A388/FFFFFF?text=Dummy+Salad', 'steps': ['Mix all ingredients.']},
+        {'recipe_id': '3', 'recipe_name': 'Dummy High Calorie Shake', 'ingredients': ['Milk', 'Peanut Butter', 'Banana'], 'nutritions': {'calories': 700, 'protein_g': 20, 'carbs_g': 70, 'fat_g': 30}, 'veg_nonveg': 'Veg', 'diet_goal': 'Weight_Gain', 'health_score': 70, 'image_link': 'https://placehold.co/600x400/00A388/FFFFFF?text=Weight+Gain+Shake', 'steps': ['Blend it all up.']},
+        {'recipe_id': '4', 'recipe_name': 'Allergy Test Recipe', 'ingredients': ['Nuts', 'Wheat', 'Sugar'], 'nutritions': {'calories': 200, 'protein_g': 5, 'carbs_g': 40, 'fat_g': 2}, 'veg_nonveg': 'Veg', 'diet_goal': 'Maintenance', 'health_score': 80, 'image_link': 'https://placehold.co/600x400/00A388/FFFFFF?text=Allergy+Test', 'steps': ['Bake it.']},
     ])
     if 'recipe_id' in data.columns:
           data['recipe_id'] = data['recipe_id'].astype(str)
@@ -335,11 +345,16 @@ def get_user_profile(user_id):
 
         if r.status_code == 200 and r.json():
             profile = r.json()[0]
+            # Process allergies: split CSV string into a list of lowercase, stripped strings
             if profile.get("allergies"):
                 profile["allergies"] = [a.strip().lower() for a in profile["allergies"].split(',') if a.strip()]
+            else:
+                profile["allergies"] = []
             
-            # Safely convert strings/floats to integers if they exist
+            # Safely convert strings/floats to numbers if they exist
             profile['age'] = int(profile.get('age')) if profile.get('age') else None
+            profile['height'] = float(profile.get('height')) if profile.get('height') else None
+            profile['weight'] = float(profile.get('weight')) if profile.get('weight') else None
             profile['duration_months'] = int(profile.get('duration_months')) if profile.get('duration_months') else 3 # Default to 3 months
 
             return profile
@@ -449,21 +464,110 @@ def get_recipes_data(results, user_profile=None):
     recipes = []
     if isinstance(results, pd.DataFrame):
         for _, row in results.iterrows():
+            # Ensure all fields are present with fallbacks
             recipes.append({
-                "recipe_id": row.get('recipe_id', ''),
-                "recipe_name": row.get('recipe_name', ''),
+                "recipe_id": str(row.get('recipe_id', '')),
+                "recipe_name": row.get('recipe_name', 'Unnamed Recipe'),
                 "ingredients": row.get('ingredients', []),
                 "nutritions": row.get('nutritions', {}),
-                "veg_nonveg": row.get('veg_nonveg', ''),
-                "diet_goal": row.get('diet_goal', ''),
-                "health_score": row.get('health_score', ''),
-                "image_link": row.get('image_link', ''),
+                "veg_nonveg": row.get('veg_nonveg', 'Both'),
+                "diet_goal": row.get('diet_goal', 'Maintenance'),
+                "health_score": row.get('health_score', 0),
+                "image_link": row.get('image_link', 'https://placehold.co/600x400/999999/FFFFFF?text=No+Image'),
                 "steps": row.get('steps', []),
             })
     return recipes, user_allergies
 
+def suggest_daily_recipes(user_profile, top_n=3):
+    """
+    Suggests recipes based on user profile (diet_goal, food_pref, allergies).
+    Prioritizes recipes that align with the diet goal and excludes allergens.
+    """
+    global data
+    if data is None or data.empty:
+        return []
+
+    # 1. Get User Preferences
+    diet_goal = user_profile.get("diet_goal", "maintenance").lower()
+    food_pref = user_profile.get("food_pref", "both").lower()
+    user_allergies = user_profile.get("allergies", [])
+    
+    filtered_data = data.copy()
+
+    # --- Initial Data Prep & Filtering ---
+    # Prepare nutrition columns for sorting, providing default safe values
+    if 'nutritions' in filtered_data.columns:
+        filtered_data['calories'] = filtered_data['nutritions'].apply(lambda x: x.get('calories', 0.0) if isinstance(x, dict) else 0.0)
+        filtered_data['protein_g'] = filtered_data['nutritions'].apply(lambda x: x.get('protein_g', 0.0) if isinstance(x, dict) else 0.0)
+    else:
+        # Create dummy columns if missing, to prevent errors
+        filtered_data['calories'] = 0.0
+        filtered_data['protein_g'] = 0.0
+
+    # 2. Filter by Food Preference (Veg/Non-Veg)
+    if food_pref in ["veg", "non-veg"]:
+        filtered_data = filtered_data[filtered_data['veg_nonveg'].str.lower() == food_pref]
+
+    if filtered_data.empty:
+        return []
+
+    # 3. Exclude by Allergies
+    if user_allergies:
+        def contains_allergen(recipe_ings):
+            """Checks if any recipe ingredient contains a user's allergen (partial match)."""
+            if isinstance(recipe_ings, list):
+                recipe_ings_lower = [str(i).lower() for i in recipe_ings]
+                # Returns True if any allergen is found in any ingredient
+                return any(any(allergen in recipe_ing for recipe_ing in recipe_ings_lower) for allergen in user_allergies)
+            return False
+            
+        # Keep recipes where 'contains_allergen' is False
+        filtered_data = filtered_data[~filtered_data['ingredients'].apply(contains_allergen)]
+
+    if filtered_data.empty:
+        return []
+
+    # 4. Sort by Diet Goal (with health_score as secondary tie-breaker)
+    sort_criteria = []
+    ascending_order = []
+    
+    if diet_goal == "weight_loss":
+        # Lowest calories first
+        sort_criteria = ['calories', 'health_score']
+        ascending_order = [True, False] 
+    elif diet_goal == "muscle_gain":
+        # Highest protein first
+        sort_criteria = ['protein_g', 'health_score']
+        ascending_order = [False, False] 
+    elif diet_goal == "weight_gain":
+        # Highest calories first
+        sort_criteria = ['calories', 'health_score']
+        ascending_order = [False, False] 
+    else:
+        # Maintenance/Other: Fallback to best health score
+        sort_criteria = ['health_score']
+        ascending_order = [False]
+        
+    # Check if 'health_score' exists before trying to sort by it
+    if 'health_score' not in filtered_data.columns:
+        if 'health_score' in sort_criteria:
+            sort_criteria.remove('health_score')
+            ascending_order = ascending_order[:-1] # Remove corresponding boolean
+
+    # Perform the sort
+    if sort_criteria:
+        filtered_data = filtered_data.sort_values(by=sort_criteria, ascending=ascending_order)
+
+    # 5. Return the top N recipes
+    top_recipes = filtered_data.head(top_n)
+    
+    recipes_list, _ = get_recipes_data(top_recipes, user_profile)
+    
+    return recipes_list
+
+
 # -----------------------------
-# 4. Authentication and Home Routes
+# 4. Authentication and Home Routes (UPDATED /dashboard)
 # -----------------------------
 @app.route("/")
 def home():
@@ -480,22 +584,36 @@ def dashboard():
         return redirect(url_for("home", message="⚠️ Please log in to view the dashboard."))
 
     user_id = session["user"].get("objectId")
-    user_profile = get_user_profile(user_id)
+    user_profile = get_user_profile(user_id) # Ensure this is fetched
 
     if data is None or data.empty:
         return render_template("index.html", recipes=[], user_allergies=[], message="❌ Recipe data is unavailable.", session=session)
 
-    if 'health_score' in data.columns:
-        popular_recipes = data.sort_values(by='health_score', ascending=False).head(10)
+    # --- Fetch Daily Suggestions ---
+    daily_suggestions = suggest_daily_recipes(user_profile, top_n=3)
+    
+    if daily_suggestions:
+        # Use suggestions as the main list if available
+        recipes = daily_suggestions
+        goal_name = user_profile.get('diet_goal', 'maintenance').replace('_', ' ').title()
+        suggestion_message = f"Your daily personalized recommendations for **{goal_name}** goal."
+        # To correctly display user_allergies, we extract them from the fetched profile
+        user_allergies = user_profile.get("allergies", [])
     else:
-        popular_recipes = data.head(10)
-
-    recipes, user_allergies = get_recipes_data(popular_recipes, user_profile)
+        # Fallback to popular recipes
+        if 'health_score' in data.columns:
+            popular_recipes = data.sort_values(by='health_score', ascending=False).head(10)
+        else:
+            popular_recipes = data.head(10)
+        
+        recipes, user_allergies = get_recipes_data(popular_recipes, user_profile)
+        suggestion_message = "Popular Recipes Today (No profile set or no matching recipes found)"
+    # -------------------------------
 
     return render_template("index.html",
                            recipes=recipes,
                            user_allergies=user_allergies,
-                           message=request.args.get('message', "Popular Recipes Today"),
+                           message=request.args.get('message', suggestion_message),
                            session=session)
 
 
@@ -707,8 +825,42 @@ def recommend():
 
     return render_template("index.html", recipes=recipes, user_allergies=user_allergies, message=f"✅ Found {len(recipes)} recipes matching: {ingredients}", session=session)
 
+
 # -----------------------------
-# 7. Mark as Eaten / Review / History Routes
+# 7. New API Route for Daily Suggestions
+# -----------------------------
+@app.route("/api/daily_suggestions", methods=["GET"])
+def api_daily_suggestions():
+    """
+    API route to fetch daily recipe suggestions based on user profile.
+    Returns JSON response for dynamic loading on the dashboard.
+    """
+    if "user" not in session:
+        return jsonify({"success": False, "message": "Authentication required."}), 401
+    
+    user_id = session["user"].get("objectId")
+    user_profile = get_user_profile(user_id)
+    
+    if not user_profile:
+        return jsonify({"success": False, "message": "Profile data missing. Please update your profile (Age, Weight, Height, Diet Goal) for personalized suggestions."}), 400
+
+    # Get the top 3 suggestions
+    suggestions = suggest_daily_recipes(user_profile, top_n=3)
+
+    if not suggestions:
+        message = "Could not find any matching recipes after applying your profile filters (Food Preference and Allergies)."
+    else:
+        message = "Daily Personalized Recipe Suggestions"
+
+    return jsonify({
+        "success": True, 
+        "message": message,
+        "suggestions": suggestions
+    })
+
+
+# -----------------------------
+# 8. Mark as Eaten / Review / History Routes
 # -----------------------------
 
 @app.route("/mark_eaten/<recipe_id>", methods=["POST"])
@@ -790,9 +942,7 @@ def history():
 
 
 # -----------------------------
-# 8. Run Flask app
+# 9. Run Flask app
 # -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
-
-
