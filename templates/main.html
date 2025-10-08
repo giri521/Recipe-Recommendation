@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GourmetGuide - Discover Healthy Recipes</title>
-  <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     /* --- NEW THEME: WARM AMBER & DEEP BURGUNDY --- */
@@ -178,22 +176,19 @@
   </style>
 </head>
 <body class="bg-light">
-  <body>
-    <h1>Welcome to My Website</h1>
-    <!-- Adsterra banner ad -->
+
+  <div class="container text-center py-2">
     <script type="text/javascript">
-        atOptions = {
-            'key' : '78ebef5b1b3e263c6e24eacd93cbc1f4',
-            'format' : 'iframe',
-            'height' : 60,
-            'width' : 468,
-            'params' : {}
-        };
+      atOptions = {
+        'key' : '78ebef5b1b3e263c6e24eacd93cbc1f4',
+        'format' : 'iframe',
+        'height' : 60,
+        'width' : 468,
+        'params' : {}
+      };
     </script>
     <script type="text/javascript" src="//www.highperformanceformat.com/78ebef5b1b3e263c6e24eacd93cbc1f4/invoke.js"></script>
-</body>
-
-  <!-- Navbar -->
+  </div>
   <nav class="navbar navbar-expand-lg navbar-dark">
     <div class="container">
       <a class="navbar-brand fw-bold" href="#">
@@ -206,7 +201,6 @@
     </div>
   </nav>
 
-  <!-- Hero Section -->
   <section class="hero-section">
     <div class="container">
       <h1 class="display-4 fw-bold">Discover Healthy & Delicious Recipes</h1>
@@ -217,7 +211,6 @@
     </div>
   </section>
 
-  <!-- Features Section -->
   <section class="py-5">
     <div class="container">
       <h2 class="text-center section-title">🌟 Why Choose GourmetGuide?</h2>
@@ -253,7 +246,6 @@
     </div>
   </section>
 
-  <!-- How It Works Section -->
   <section class="py-5 steps-section">
     <div class="container">
       <h2 class="text-center section-title">⚙️ How It Works</h2>
@@ -295,7 +287,6 @@
     </div>
   </section>
 
-  <!-- CTA Section -->
   <section class="py-5 text-center" style="background-color: rgba(123, 44, 63, 0.05);">
     <div class="container">
       <h2 class="mb-4" style="color: var(--primary-color);">Ready to Transform Your Cooking?</h2>
@@ -309,14 +300,12 @@
     </div>
   </section>
 
-  <!-- Footer -->
   <footer class="footer text-center">
     <div class="container">
       <p class="mb-0">&copy; 2023 GourmetGuide. All rights reserved.</p>
     </div>
   </footer>
 
-  <!-- Auth Modal -->
   <div class="modal fade" id="authModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -326,7 +315,6 @@
         </div>
         <div class="modal-body p-4">
 
-          <!-- Toggle Tabs -->
           <ul class="nav nav-tabs mb-4" id="authTab" role="tablist">
             <li class="nav-item" role="presentation">
               <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button">Login</button>
@@ -336,9 +324,7 @@
             </li>
           </ul>
 
-          <!-- Tab Content -->
           <div class="tab-content">
-            <!-- Login Form -->
             <div class="tab-pane fade show active" id="login">
               <form action="/login" method="POST">
                 <div class="mb-3">
@@ -353,7 +339,6 @@
               </form>
             </div>
 
-            <!-- Signup Form -->
             <div class="tab-pane fade" id="signup">
               <form action="/signup" method="POST">
                 <div class="mb-3">
@@ -378,7 +363,6 @@
     </div>
   </div>
 
-  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
