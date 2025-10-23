@@ -107,7 +107,7 @@ except Exception as e:
     ])
     if 'recipe_id' in data.columns:
           data['recipe_id'] = data['recipe_id'].astype(str)
-          
+        
 # -----------------------------
 # 3. Helper functions
 # -----------------------------
@@ -488,8 +488,23 @@ def suggest_daily_recipes(user_profile, top_n=3):
         return []
 
     # 1. Get User Preferences
-    diet_goal = user_profile.get("diet_goal", "maintenance").lower()
-    food_pref = user_profile.get("food_pref", "both").lower()
+    # --- FIX for AttributeError: 'NoneType' object has no attribute 'lower' ---
+    # We must explicitly check the result of .get() to prevent errors if the key exists but holds a None value.
+    
+    # Handle diet_goal defensively
+    raw_diet_goal = user_profile.get("diet_goal")
+    if raw_diet_goal is None:
+        diet_goal = "maintenance"
+    else:
+        diet_goal = str(raw_diet_goal).lower()
+    
+    # Handle food_pref defensively
+    raw_food_pref = user_profile.get("food_pref")
+    if raw_food_pref is None:
+        food_pref = "both"
+    else:
+        food_pref = str(raw_food_pref).lower()
+    
     user_allergies = user_profile.get("allergies", [])
     
     filtered_data = data.copy()
@@ -595,7 +610,11 @@ def dashboard():
     if daily_suggestions:
         # Use suggestions as the main list if available
         recipes = daily_suggestions
-        goal_name = user_profile.get('diet_goal', 'maintenance').replace('_', ' ').title()
+        # Retrieve the corrected diet goal string for display purposes
+        raw_diet_goal = user_profile.get("diet_goal")
+        diet_goal_str = str(raw_diet_goal).lower() if raw_diet_goal is not None else "maintenance"
+        goal_name = diet_goal_str.replace('_', ' ').title()
+        
         suggestion_message = f"Your daily personalized recommendations for **{goal_name}** goal."
         # To correctly display user_allergies, we extract them from the fetched profile
         user_allergies = user_profile.get("allergies", [])
@@ -800,8 +819,11 @@ def recommend():
 
     # Apply filtering/sorting based on user profile
     if user_profile:
-        food_pref = user_profile.get("food_pref", "both").lower()
-        diet_goal = user_profile.get("diet_goal", "")
+        food_pref_raw = user_profile.get("food_pref")
+        food_pref = str(food_pref_raw).lower() if food_pref_raw is not None else "both"
+        
+        diet_goal_raw = user_profile.get("diet_goal")
+        diet_goal = str(diet_goal_raw).lower() if diet_goal_raw is not None else ""
 
         # 2. Food Preference Filter (Veg/Non-Veg)
         if food_pref in ["veg", "non-veg"]:
